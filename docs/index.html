@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SONIC: Temporal Control for Audio Editing</title>
+<style>
+:root { --fg:#1d1d1f; --muted:#6e6e73; --bg:#fbfbfd; --card:#fff; --line:#e5e5ea; --accent:#1f6feb; }
+@media (prefers-color-scheme: dark) { :root { --fg:#f5f5f7; --muted:#a1a1a6; --bg:#111113; --card:#1c1c1f; --line:#2c2c30; --accent:#58a6ff; } }
+* { box-sizing:border-box; }
+body { margin:0; font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:var(--bg); }
+main { max-width:980px; margin:0 auto; padding:40px 18px 80px; }
+h1 { font-size:2rem; margin:0 0 .2em; } h2 { font-size:1.25rem; margin:0 0 .4em; }
+.sub { color:var(--muted); margin:0 0 1.2em; font-size:1.05rem; }
+a { color:var(--accent); }
+.links a { margin-right:1.2em; font-weight:600; }
+.card, .example { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; margin:22px 0; }
+.instr { font-size:1.1rem; font-style:italic; margin:.2em 0 1em; }
+.players { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:10px 18px; margin-bottom:16px; }
+.track span { display:block; font-size:.85rem; color:var(--muted); margin-bottom:2px; }
+audio { width:100%; height:36px; }
+img { width:100%; border-radius:8px; background:#fff; }
+.scroll { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; margin-top:12px; font-size:.92rem; }
+th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+th { color:var(--muted); font-weight:600; }
+small { color:var(--muted); }
+ul { padding-left:1.2em; }
+</style></head><body><main>
+<h1>SONIC</h1>
+<p class="sub">Semantic and Temporal Control for instruction-guided audio editing: remove a sound described in natural language, <b>only where it occurs</b>.</p>
+<p class="links"><a href="https://github.com/yahiag04/SONIC">Code</a><a href="https://github.com/yahiag04/SONIC/blob/main/reports/research_note.md">Research note</a><a href="https://colab.research.google.com/github/yahiag04/SONIC/blob/main/notebooks/sonic_colab.ipynb">Colab</a></p>
+
+<div class="card">
+<h2>How it works</h2>
+<p>A pretrained text-queried separator (AudioSep) estimates the target sound. SONIC scores 1&nbsp;s windows with CLAP text–audio similarity to find <i>when</i> the target occurs, and subtracts the estimate only inside the detected intervals, with smooth crossfades. Audio outside those intervals is left bit-identical. All methods below share the same separator output; only the edit mask differs.</p>
+<h2>Results on 60 held-out mixtures</h2>
+<div class="scroll"><table>
+<tr><th>Method</th><th>Whole-clip SDR</th><th>Background SDR outside events</th><th>Target suppression</th></tr>
+<tr><td>Baseline (global removal)</td><td>15.5 <small>[13.5, 17.5]</small></td><td>20.8 <small>[17.4, 24.2]</small></td><td>13.7 <small>[12.4, 15.3]</small></td></tr><tr><td><b>SONIC</b></td><td>17.6 <small>[15.6, 19.7]</small></td><td>36.7 <small>[33.3, 40.0]</small></td><td>11.2 <small>[9.5, 12.9]</small></td></tr><tr><td>Oracle mask</td><td>20.9 <small>[19.2, 22.7]</small></td><td>39.3 <small>[36.5, 42.2]</small></td><td>13.7 <small>[12.4, 15.3]</small></td></tr></table></div>
+<ul>
+<li>Localized editing preserves the background far better (+16&nbsp;dB outside events) and improves whole-clip SDR by 2.1&nbsp;dB (p&nbsp;=&nbsp;0.007).</li>
+<li>Missed event segments cost 2.6&nbsp;dB of target suppression on average, mostly on repeated events.</li>
+<li>With ground-truth intervals (oracle), gains reach +5.4&nbsp;dB with no suppression loss, so <b>localization is the bottleneck</b>.</li>
+</ul>
+<p><small>Mean [95% bootstrap CI]. Synthetic mixtures from ESC-50 (CC BY-NC 3.0) and LibriSpeech (CC BY 4.0). Examples are the first eval clip of each scenario, not hand-picked.</small></p>
+</div>
+
+<section class="example">
+  <h2>Example 1: Dog barking over an environmental background with speech</h2>
+  <p class="instr">“Mute the dog barking.”</p>
+  <div class="players"><div class="track"><span>Original</span><audio controls preload="none" src="demo/example1_dog_env/mixture.wav"></audio></div><div class="track"><span>Ground truth (target removed)</span><audio controls preload="none" src="demo/example1_dog_env/reference.wav"></audio></div><div class="track"><span>Baseline: global removal</span><audio controls preload="none" src="demo/example1_dog_env/baseline.wav"></audio></div><div class="track"><span>SONIC: localized removal</span><audio controls preload="none" src="demo/example1_dog_env/sonic.wav"></audio></div><div class="track"><span>Oracle mask</span><audio controls preload="none" src="demo/example1_dog_env/oracle.wav"></audio></div></div>
+  <img src="demo/example1_dog_env/localization.png" alt="Spectrogram, CLAP score, and detected vs. ground-truth intervals">
+  <div class="scroll"><table>
+    <tr><th>Method</th><th>SDR (dB)</th><th>Background SDR outside events (dB)</th><th>Target suppression (dB)</th><th>Localization IoU</th></tr>
+    <tr><td>Baseline</td><td>14.9</td><td>19.7</td><td>9.6</td><td>–</td></tr><tr><td>SONIC</td><td>16.0</td><td>31.3</td><td>9.6</td><td>0.94</td></tr><tr><td>Oracle</td><td>15.9</td><td>28.8</td><td>9.6</td><td>0.94</td></tr>
+  </table></div>
+</section>
+<section class="example">
+  <h2>Example 2: A single short event over a continuous background</h2>
+  <p class="instr">“Mute the knocking on a door.”</p>
+  <div class="players"><div class="track"><span>Original</span><audio controls preload="none" src="demo/example2_short_event/mixture.wav"></audio></div><div class="track"><span>Ground truth (target removed)</span><audio controls preload="none" src="demo/example2_short_event/reference.wav"></audio></div><div class="track"><span>Baseline: global removal</span><audio controls preload="none" src="demo/example2_short_event/baseline.wav"></audio></div><div class="track"><span>SONIC: localized removal</span><audio controls preload="none" src="demo/example2_short_event/sonic.wav"></audio></div><div class="track"><span>Oracle mask</span><audio controls preload="none" src="demo/example2_short_event/oracle.wav"></audio></div></div>
+  <img src="demo/example2_short_event/localization.png" alt="Spectrogram, CLAP score, and detected vs. ground-truth intervals">
+  <div class="scroll"><table>
+    <tr><th>Method</th><th>SDR (dB)</th><th>Background SDR outside events (dB)</th><th>Target suppression (dB)</th><th>Localization IoU</th></tr>
+    <tr><td>Baseline</td><td>22.7</td><td>41.4</td><td>7.0</td><td>–</td></tr><tr><td>SONIC</td><td>22.7</td><td>44.0</td><td>7.0</td><td>0.29</td></tr><tr><td>Oracle</td><td>22.8</td><td>60.0</td><td>7.0</td><td>0.78</td></tr>
+  </table></div>
+</section>
+<section class="example">
+  <h2>Example 3: A sound occurring at multiple timestamps (SONIC&#x27;s failure case: it misses part of an event)</h2>
+  <p class="instr">“Remove the dog barking while preserving everything else.”</p>
+  <div class="players"><div class="track"><span>Original</span><audio controls preload="none" src="demo/example3_intermittent/mixture.wav"></audio></div><div class="track"><span>Ground truth (target removed)</span><audio controls preload="none" src="demo/example3_intermittent/reference.wav"></audio></div><div class="track"><span>Baseline: global removal</span><audio controls preload="none" src="demo/example3_intermittent/baseline.wav"></audio></div><div class="track"><span>SONIC: localized removal</span><audio controls preload="none" src="demo/example3_intermittent/sonic.wav"></audio></div><div class="track"><span>Oracle mask</span><audio controls preload="none" src="demo/example3_intermittent/oracle.wav"></audio></div></div>
+  <img src="demo/example3_intermittent/localization.png" alt="Spectrogram, CLAP score, and detected vs. ground-truth intervals">
+  <div class="scroll"><table>
+    <tr><th>Method</th><th>SDR (dB)</th><th>Background SDR outside events (dB)</th><th>Target suppression (dB)</th><th>Localization IoU</th></tr>
+    <tr><td>Baseline</td><td>18.1</td><td>44.8</td><td>12.9</td><td>–</td></tr><tr><td>SONIC</td><td>11.4</td><td>52.4</td><td>6.2</td><td>0.61</td></tr><tr><td>Oracle</td><td>18.1</td><td>46.6</td><td>12.9</td><td>0.88</td></tr>
+  </table></div>
+</section>
+</main></body></html>
