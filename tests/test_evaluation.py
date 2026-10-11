@@ -24,6 +24,13 @@ def test_si_sdr_known_snr():
     assert ev.si_sdr(ref + noise, ref) == pytest.approx(10.0, abs=0.01)
 
 
+def test_sdr_penalises_gain_unlike_si_sdr():
+    ref = np.random.default_rng(6).standard_normal(SR)
+    assert ev.si_sdr(0.95 * ref, ref) > 100
+    assert ev.sdr(0.95 * ref, ref) == pytest.approx(20 * np.log10(1 / 0.05))
+    assert ev.sdr(ref, ref) == ev.SDR_CAP_DB
+
+
 def test_region_mask():
     m = ev.region_mask([(0.5, 1.0)], n=2 * SR, sr=SR)
     assert m.sum() == SR // 2 and m[SR // 2] and not m[SR]
@@ -69,7 +76,7 @@ def test_evaluate_sample_perfect_and_untouched_regions():
     mask = np.zeros(n)
     mask[SR:2 * SR] = 1
     r = ev.evaluate_sample(x=x, y=b.copy(), s=s, b=b, gt_intervals=gt, sr=SR, pred_intervals=gt, mask=mask)
-    assert r["sisdr_bg"] > 100 and r["sisdr_bg_out"] > 100
+    assert r["sisdr_bg"] == ev.SDR_CAP_DB and r["sdr_bg_out"] == ev.SDR_CAP_DB
     assert r["sisdri"] > 0
     assert r["loc_iou"] == pytest.approx(1.0)
     assert r["mse_out"] == pytest.approx(0.0)
@@ -86,7 +93,7 @@ def test_short_regions_give_nan():
     s[100:200] = 1
     b = np.random.default_rng(3).standard_normal(n)
     r = ev.evaluate_sample(x=s + b, y=b, s=s, b=b, gt_intervals=[(100 / SR, 200 / SR)], sr=SR)
-    assert np.isnan(r["sisdr_bg_in"])
+    assert np.isnan(r["sdr_bg_in"])
 
 
 def test_edge_click_metric_detects_hard_switch():

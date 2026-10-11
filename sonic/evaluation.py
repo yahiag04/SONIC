@@ -16,6 +16,7 @@ from scipy.stats import wilcoxon
 Interval = tuple[float, float]
 EPS = 1e-12
 MIN_REGION_S = 0.25
+SDR_CAP_DB = 60.0  # perfectly preserved regions would otherwise give ~inf and dominate means
 
 
 def si_sdr(est: np.ndarray, ref: np.ndarray) -> float:
@@ -28,6 +29,18 @@ def si_sdr(est: np.ndarray, ref: np.ndarray) -> float:
     return float(10 * np.log10((target @ target + EPS) / (noise @ noise + EPS)))
 
 
+def sdr(est: np.ndarray, ref: np.ndarray, cap: float = SDR_CAP_DB) -> float:
+    """Scale-dependent SDR: 10 log10(||ref||^2 / ||est - ref||^2), capped at ``cap`` dB.
+
+    Unlike SI-SDR this penalises gain changes, which matters for background
+    preservation: subtracting a leaky estimate that is a scaled copy of the
+    background is invisible to SI-SDR but not to SDR.
+    """
+    ref = np.asarray(ref, dtype=np.float64)
+    err = np.asarray(est, dtype=np.float64) - ref
+    return float(min(cap, 10 * np.log10((ref @ ref + EPS) / (err @ err + EPS))))
+
+
 def region_mask(intervals: Sequence[Interval], n: int, sr: int) -> np.ndarray:
     m = np.zeros(n, dtype=bool)
     for t0, t1 in intervals:
@@ -35,10 +48,10 @@ def region_mask(intervals: Sequence[Interval], n: int, sr: int) -> np.ndarray:
     return m
 
 
-def _region_sisdr(y, b, region, sr) -> float:
+def _region_sdr(y, b, region, sr) -> float:
     if region.sum() < MIN_REGION_S * sr:
         return float("nan")
-    return si_sdr(y[region], b[region])
+    return sdr(y[region], b[region])
 
 
 def target_suppression_db(y: np.ndarray, s: np.ndarray, b: np.ndarray, region: np.ndarray) -> float:
@@ -133,10 +146,11 @@ def evaluate_sample(
     E = region_mask(gt_intervals, n, sr)
     out_reg = ~E
     r = {
-        "sisdr_bg": si_sdr(y, b),
-        "sisdr_mix": si_sdr(x, b),
-        "sisdr_bg_in": _region_sisdr(y, b, E, sr),
-        "sisdr_bg_out": _region_sisdr(y, b, out_reg, sr),
+        "sdr_bg": sdr(y, b),
+        "sisdr_bg": min(SDR_CAP_DB, si_sdr(y, b)),
+        "sisdr_mix": min(SDR_CAP_DB, si_sdr(x, b)),
+        "sdr_bg_in": _region_sdr(y, b, E, sr),
+        "sdr_bg_out": _region_sdr(y, b, out_reg, sr),
         "mse_in": float(np.mean((y[E] - b[E]) ** 2)) if E.any() else float("nan"),
         "mse_out": float(np.mean((y[out_reg] - b[out_reg]) ** 2)) if out_reg.any() else float("nan"),
         "target_suppression_db": target_suppression_db(y, s, b, E),

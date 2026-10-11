@@ -156,10 +156,11 @@ y = output, E = event region (union of GT intervals), Ē = complement.
 
 | Metric | Definition | Measures |
 |---|---|---|
-| `sisdr_bg` | SI-SDR(y, b) on the whole clip | overall quality |
+| `sdr_bg` | 10·log10(‖b‖²/‖y−b‖²), whole clip (scale-dependent) | overall quality; **ablation selection criterion** |
+| `sisdr_bg` | SI-SDR(y, b) on the whole clip | overall quality, gain-insensitive |
 | `sisdri` | SI-SDR(y, b) − SI-SDR(x, b) | improvement over doing nothing |
-| `sisdr_bg_out` / `mse_out` | on Ē only | background preservation (H1 main) |
-| `sisdr_bg_in` | on E only | quality where editing happens |
+| `sdr_bg_out` / `mse_out` | SDR / MSE on Ē only | background preservation (H1 main) |
+| `sdr_bg_in` | SDR on E only | quality where editing happens |
 | `target_suppression_db` | 10·log10(‖s_E‖² / ‖(y−b)_E‖²) | removal effectiveness |
 | `loc_precision/recall/f1`, `loc_iou` | frame-level vs GT at 100 Hz | localization |
 | `onset_err_s`, `offset_err_s` | mean abs boundary error of matched intervals | localization |
@@ -167,8 +168,12 @@ y = output, E = event region (union of GT intervals), Ē = complement.
 | `latency_*_s`, `peak_gpu_mb` | per stage | cost |
 | `clap_target_sim_drop` | cos(CLAP(x), t) − cos(CLAP(y), t) | auxiliary only |
 
-SI-SDR on short regions: regions shorter than 0.25 s are skipped
-(the metric is NaN and excluded from aggregation, with counts reported).
+Regional metrics are scale-dependent SDR, not SI-SDR: subtracting a leaky
+estimate that is a scaled copy of the background (y = 0.95·b) is invisible to
+SI-SDR but is exactly the damage H1 is about. All SDR/SI-SDR values are capped
+at 60 dB so perfectly preserved regions do not dominate the means. Regions
+shorter than 0.25 s are skipped (NaN, excluded from aggregation, counts
+reported). (Revised during implementation; the first draft used regional SI-SDR.)
 
 Aggregation: mean ± 95% bootstrap CI (1000 resamples, fixed seed) per
 scenario and overall; paired Wilcoxon signed-rank (scipy) on per-sample
@@ -186,7 +191,7 @@ and the median difference. Results are written as `results/per_sample.csv`,
   - crossfade ∈ {0, 10, 50, 200} ms
   - hard vs soft mask
   Each is varied one factor at a time around the default.
-- **Protocol:** pick the dev-best setting by `sisdr_bg` (tie-break:
+- **Protocol:** pick the dev-best setting by `sdr_bg` (tie-break:
   `loc_f1`), write it into `configs/default.yaml`, then run eval once.
 - **Plots** (`results/figures/`): main bar chart with CIs, ablation line
   plots, and a localization figure per demo example (spectrogram; score

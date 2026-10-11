@@ -1,6 +1,6 @@
 """One-factor-at-a-time ablations of SONIC's localization/editing parameters.
 
-Run on the dev split only. The best value per factor (by mean ``sisdr_bg`` of
+Run on the dev split only. The best value per factor (by mean ``sdr_bg`` of
 the SONIC output, tie-break ``loc_f1``) is combined into a tuned config that is
 then used, unchanged, on the eval split.
 """
@@ -52,7 +52,7 @@ def run_ablations(cfg: SonicConfig, split: str = "dev", log=print) -> pd.DataFra
         df.insert(0, "factor", v.factor)
         df.insert(1, "value", str(v.value))
         frames.append(df)
-        log(f"{v.factor}={v.value}: sisdr_bg={df.sisdr_bg.mean():.2f} dB, loc_f1={df.loc_f1.mean():.3f}")
+        log(f"{v.factor}={v.value}: sdr_bg={df.sdr_bg.mean():.2f} dB, loc_f1={df.loc_f1.mean():.3f}")
     # Reference rows: baseline and oracle with the default config.
     ref = evaluate_config(cfg, split, methods=["baseline", "oracle"], sample_ids=ids, cached=cached)
     ref.insert(0, "factor", "reference")
@@ -70,10 +70,10 @@ def select_best(df: pd.DataFrame, cfg: SonicConfig) -> tuple[SonicConfig, list[s
     tuned = cfg
     overrides = []
     for factor, section in _SECTION_OF.items():
-        g = df[df.factor == factor].groupby("value")[["sisdr_bg", "loc_f1"]].mean()
+        g = df[df.factor == factor].groupby("value")[["sdr_bg", "loc_f1"]].mean()
         if g.empty:
             continue
-        best = g.sort_values(["sisdr_bg", "loc_f1"], ascending=False).index[0]
+        best = g.sort_values(["sdr_bg", "loc_f1"], ascending=False).index[0]
         value = best if factor == "mask" else float(best)
         changes = {factor: value}
         if factor == "win_s":

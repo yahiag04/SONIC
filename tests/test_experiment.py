@@ -4,72 +4,14 @@ The ESC-50 / LibriSpeech layouts are imitated with generated tones and noise,
 and the model is a test double. No real audio or model is involved.
 """
 
-import numpy as np
-import pandas as pd
-import pytest
-import soundfile as sf
 
 from sonic import dataset as ds
 from sonic.config import load_config, replace_section
 from sonic.dataset_builder import build_split, list_librispeech, load_esc50, split_pools
 from sonic.experiment import cache_split, evaluate_config, load_cached
-from tests.fakes import FakeEmbedder
+from tests.conftest import EnergyModel
 
 SR = 32000
-
-
-def _write(path, x, sr=44100):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(path), x.astype(np.float32), sr)
-
-
-@pytest.fixture(scope="module")
-def fake_sources(tmp_path_factory):
-    root = tmp_path_factory.mktemp("raw")
-    rng = np.random.default_rng(0)
-    esc = root / "ESC-50"
-    rows = []
-    classes = set(ds.BED_CLASSES) | {c for sc in ds.SCENARIOS.values() for c in sc.targets}
-    for cls in sorted(classes):
-        for fold in (1, 5):
-            for j in range(2):
-                fname = f"{fold}-{cls}-{j}.wav"
-                if cls in ds.BED_CLASSES:
-                    x = 0.1 * rng.standard_normal(5 * 44100)
-                else:
-                    x = np.zeros(5 * 44100)
-                    x[44100:2 * 44100] = 0.5 * np.sin(2 * np.pi * 800 * np.arange(44100) / 44100)
-                _write(esc / "audio" / fname, x)
-                rows.append({"filename": fname, "fold": fold, "target": 0, "category": cls,
-                             "esc10": False, "src_file": 0, "take": "A"})
-    (esc / "meta").mkdir(parents=True)
-    pd.DataFrame(rows).to_csv(esc / "meta" / "esc50.csv", index=False)
-    libri = root / "LibriSpeech" / "dev-clean"
-    for spk in range(5):
-        for u in range(3):
-            _write(libri / str(spk) / "1" / f"{spk}-1-{u}.flac",
-                   0.1 * np.sin(2 * np.pi * 200 * np.arange(4 * 16000) / 16000), sr=16000)
-    return esc, libri
-
-
-class EnergyModel:
-    """Test double: separates by oracle access to the true target (with leakage)."""
-
-    sr = SR
-
-    def __init__(self, data_root, split):
-        self.data_root, self.split = data_root, split
-        self.emb = FakeEmbedder("__target__")
-
-    def separate(self, wav, text):
-        return (0.05 * wav).astype(np.float32)  # leaky, deliberately imperfect
-
-    def embed_text(self, texts):
-        # treat the first text as the target prompt
-        return np.array([[1.0, 0.0]] + [[0.0, 1.0]] * (len(texts) - 1))
-
-    def embed_audio(self, windows):
-        return self.emb.embed_audio(windows)
 
 
 def test_build_cache_and_evaluate(fake_sources, tmp_path):
@@ -83,7 +25,7 @@ def test_build_cache_and_evaluate(fake_sources, tmp_path):
     manifest = build_split(pools["eval"], "eval", tmp_path / "data", n_per_scenario=2, cfg=cfg.dataset)
     assert len(manifest) == 6 and set(manifest.scenario) == set(ds.SCENARIOS)
 
-    model = EnergyModel(tmp_path / "data", "eval")
+    model = EnergyModel()
     cache_split(model, cfg, "eval", window_sizes=[0.5, 1.0], log=lambda *_: None)
     cs = load_cached(cfg, "eval", manifest.sample_id[0])
     assert {"w0.5", "w1"} <= set(cs.scores)
@@ -112,7 +54,7 @@ def test_ablations_select_best_and_plots(fake_sources, tmp_path):
                                  f"paths.cache_dir={tmp_path / 'cache'}"])
     pools = split_pools(load_esc50(esc_root), list_librispeech(libri_root))
     build_split(pools["dev"], "dev", tmp_path / "data", n_per_scenario=1, cfg=cfg.dataset)
-    cache_split(EnergyModel(None, None), cfg, "dev", window_sizes=ABLATION_WINDOWS, log=lambda *_: None)
+    cache_split(EnergyModel(), cfg, "dev", window_sizes=ABLATION_WINDOWS, log=lambda *_: None)
 
     df = run_ablations(cfg, "dev", log=lambda *_: None)
     assert set(df.factor) == {"win_s", "threshold", "crossfade_s", "mask", "reference"}
