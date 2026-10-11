@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+data/
+models/
+results/*
+!results/.gitkeep
+examples/*
+!examples/.gitkeep
+*.ckpt
+*.pt
+*.pth
+.DS_Store

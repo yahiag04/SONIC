@@ -1,0 +1,13 @@
+# Extra dependencies for AudioSep inference on Colab.
+# torch / torchaudio are preinstalled on Colab and intentionally not pinned here.
+-r requirements.txt
+transformers>=4.30
+huggingface_hub>=0.20
+librosa>=0.10
+torchlibrosa==0.1.0
+lightning>=2.0
+ftfy
+braceexpand
+webdataset
+h5py
+nbformat
