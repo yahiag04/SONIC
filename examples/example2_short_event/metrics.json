@@ -1,0 +1,90 @@
+{
+  "sample_id": "short_event_000",
+  "instruction": "Mute the knocking on a door.",
+  "target_prompt": "knocking on a door",
+  "ground_truth_intervals": [
+    [
+      4.59934375,
+      5.29934375
+    ]
+  ],
+  "metrics": {
+    "baseline": {
+      "sdr_bg": 22.703076048747576,
+      "sisdr_bg": 22.693310891196333,
+      "sisdr_mix": 15.805854196442379,
+      "sdr_bg_in": 8.695767992796647,
+      "sdr_bg_out": 41.39999569121993,
+      "mse_in": 0.00018917549459729344,
+      "mse_out": 1.8710167637436825e-07,
+      "target_suppression_db": 6.962547779083252,
+      "sisdri": 6.887456694753954,
+      "intervals": null
+    },
+    "sonic": {
+      "sdr_bg": 22.728868858791852,
+      "sisdr_bg": 22.726922361098087,
+      "sisdr_mix": 15.805854196442379,
+      "sdr_bg_in": 8.695767992796647,
+      "sdr_bg_out": 44.04847343645646,
+      "mse_in": 0.00018917549459729344,
+      "mse_out": 1.0167867969812505e-07,
+      "target_suppression_db": 6.962547779083252,
+      "sisdri": 6.921068164655708,
+      "loc_precision": 0.2916666666666667,
+      "loc_recall": 1.0,
+      "loc_f1": 0.45161290322580644,
+      "loc_iou": 0.2916666666666667,
+      "onset_err_s": 0.1993437499999997,
+      "offset_err_s": 0.0506562499999994,
+      "event_recall": 1.0,
+      "edge_click_db": -1.5711450650445344,
+      "intervals": [
+        [
+          1.9,
+          3.35
+        ],
+        [
+          4.4,
+          5.35
+        ]
+      ]
+    },
+    "oracle": {
+      "sdr_bg": 22.759389673020387,
+      "sisdr_bg": 22.76465734398808,
+      "sisdr_mix": 15.805854196442379,
+      "sdr_bg_in": 8.695767992796647,
+      "sdr_bg_out": 60.0,
+      "mse_in": 0.00018917549459729344,
+      "mse_out": 1.2502159307814509e-09,
+      "target_suppression_db": 6.962547779083252,
+      "sisdri": 6.9588031475457015,
+      "loc_precision": 0.7777777777777778,
+      "loc_recall": 1.0,
+      "loc_f1": 0.875,
+      "loc_iou": 0.7777777777777778,
+      "onset_err_s": 0.09999999999999964,
+      "offset_err_s": 0.09999999999999964,
+      "event_recall": 1.0,
+      "edge_click_db": -1.3821999843312105,
+      "intervals": [
+        [
+          4.49934375,
+          5.39934375
+        ]
+      ]
+    }
+  },
+  "source_files": {
+    "events": [
+      "5-218981-A-30.wav"
+    ],
+    "bed": [
+      "5-213077-A-11.wav",
+      "5-219379-A-11.wav",
+      "5-219379-C-11.wav"
+    ],
+    "speech": []
+  }
+}

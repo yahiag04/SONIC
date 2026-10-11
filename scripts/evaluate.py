@@ -9,6 +9,8 @@ Outputs in <results_dir>/<run-name>/<split>/:
 
 from __future__ import annotations
 
+import json
+import platform
 from pathlib import Path
 
 import numpy as np
@@ -51,6 +53,21 @@ def compact(summary: pd.DataFrame, keys: list[str], metrics: list[str]) -> pd.Da
     return out
 
 
+def environment() -> dict:
+    """Hardware/software used for this run (latency and memory depend on it)."""
+    env = {"python": platform.python_version(), "platform": platform.platform()}
+    try:
+        import torch
+
+        env["torch"] = torch.__version__
+        if torch.cuda.is_available():
+            p = torch.cuda.get_device_properties(0)
+            env.update(gpu=p.name, gpu_memory_gb=round(p.total_memory / 2**30, 1), cuda=torch.version.cuda)
+    except ImportError:
+        env["torch"] = None
+    return env
+
+
 def add_clap(df: pd.DataFrame, cfg, split: str, audio_dir: Path) -> pd.DataFrame:
     model = load_model(cfg)
     sims, drops = [], []
@@ -73,6 +90,7 @@ def main():
     out = Path(cfg.paths.results_dir) / args.run_name / args.split
     out.mkdir(parents=True, exist_ok=True)
     (out / "config.yaml").write_text(yaml.safe_dump(cfg.to_dict(), sort_keys=False))
+    (out / "environment.json").write_text(json.dumps(environment(), indent=2))
 
     df = evaluate_config(cfg, args.split, methods=METHODS, output_dir=out / "audio")
     if args.clap:

@@ -8,10 +8,28 @@ Instruction-guided **selective sound removal** with explicit **temporal localiza
 **Research question.** Can explicit temporal localization improve background preservation
 in instruction-guided audio editing without sacrificing editing quality?
 
-**Status.** The pipeline, baseline, evaluation framework and Colab notebook are implemented
-and unit-tested. The experimental results are produced by running the notebook on a Colab
-T4; until a run's outputs are committed under `results/`, the report
-(`reports/research_note.md`) contains explicit placeholders rather than numbers.
+**Status.** Implemented, unit-tested, and evaluated on Colab. Results are in
+`results/main/eval/summary.md` (held-out eval split) and `results/ablations/summary.md`
+(dev split). The write-up is in `reports/research_note.md`.
+
+### Key results (eval split, 60 clips, mean [95% CI])
+
+| Method | Whole-clip SDR | Background SDR outside events | Target suppression |
+|---|---|---|---|
+| Baseline (global removal) | 15.5 [13.5, 17.5] dB | 20.8 [17.4, 24.2] dB | 13.7 [12.4, 15.3] dB |
+| **SONIC** (CLAP localization) | **17.6** [15.6, 19.7] dB | **36.7** [33.3, 40.0] dB | 11.2 [9.5, 12.9] dB |
+| Oracle mask (ground-truth intervals) | 20.9 [19.2, 22.7] dB | 39.3 [36.5, 42.2] dB | 13.7 [12.4, 15.3] dB |
+
+* Localization strongly improves background preservation (+16 dB outside events) and
+  whole-clip SDR (+2.1 dB, p = 0.007).
+* It is **not free**: localization misses lower target suppression by 2.6 dB on average
+  (p < 1e-4). There is no loss for single short events, but on intermittent events SONIC is
+  worse than the baseline overall.
+* The oracle mask gains +5.4 dB with no suppression loss: localization recall is the
+  bottleneck.
+* Cost: 1.21 s vs 0.37 s per 10 s clip; about 2.3 GB peak GPU memory.
+
+Demo audio and localization plots: `examples/` (three examples, not hand-picked).
 
 [Open the notebook in Colab](https://colab.research.google.com/github/yahiag04/SONIC/blob/main/notebooks/sonic_colab.ipynb)
 
@@ -146,6 +164,8 @@ bootstrap CI), with paired Wilcoxon tests between methods.
 
 * Removal only; amplification/replacement are not implemented.
 * The instruction parser is rule-based: it handles removal phrasings, not arbitrary language.
+* Localization recall is the bottleneck: missed event segments keep the target in the output
+  (see the intermittent scenario in the research note).
 * The CLAP checkpoint reports ESC-50 accuracy in its name, i.e. ESC-50 was part of its
   training/evaluation data, so localization on ESC-50 sources may be optimistic.
 * Per-clip z-score normalization assumes the target is present; on clips without the target,

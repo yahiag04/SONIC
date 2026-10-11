@@ -1,0 +1,5 @@
+localization.hop_s=0.25
+localization.win_s=1.0
+localization.threshold=0.5
+editing.crossfade_s=0.2
+editing.mask=hard

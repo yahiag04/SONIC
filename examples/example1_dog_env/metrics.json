@@ -1,0 +1,88 @@
+{
+  "sample_id": "dog_env_000",
+  "instruction": "Mute the dog barking.",
+  "target_prompt": "dog barking",
+  "ground_truth_intervals": [
+    [
+      2.171125,
+      5.171125
+    ]
+  ],
+  "metrics": {
+    "baseline": {
+      "sdr_bg": 14.924658928140754,
+      "sisdr_bg": 14.933878245785053,
+      "sisdr_mix": 6.512436735581616,
+      "sdr_bg_in": 10.699989525908656,
+      "sdr_bg_out": 19.679034964731663,
+      "mse_in": 0.0006686451379209757,
+      "mse_out": 8.963592699728906e-05,
+      "target_suppression_db": 9.623428344726562,
+      "sisdri": 8.421441510203437,
+      "intervals": null
+    },
+    "sonic": {
+      "sdr_bg": 16.014162700731752,
+      "sisdr_bg": 15.929419837729213,
+      "sisdr_mix": 6.512436735581616,
+      "sdr_bg_in": 10.699989525908656,
+      "sdr_bg_out": 31.30301563415078,
+      "mse_in": 0.0006686451379209757,
+      "mse_out": 6.1671430557908025e-06,
+      "target_suppression_db": 9.623428344726562,
+      "sisdri": 9.416983102147597,
+      "loc_precision": 0.9375,
+      "loc_recall": 1.0,
+      "loc_f1": 0.967741935483871,
+      "loc_iou": 0.9375,
+      "onset_err_s": 0.02112500000000006,
+      "offset_err_s": 0.17887499999999967,
+      "event_recall": 1.0,
+      "edge_click_db": -10.28984443395733,
+      "intervals": [
+        [
+          2.15,
+          5.35
+        ]
+      ]
+    },
+    "oracle": {
+      "sdr_bg": 15.944076448047188,
+      "sisdr_bg": 15.860330765962376,
+      "sisdr_mix": 6.512436735581616,
+      "sdr_bg_in": 10.699989525908656,
+      "sdr_bg_out": 28.817845013059117,
+      "mse_in": 0.0006686451379209757,
+      "mse_out": 1.0929520612990018e-05,
+      "target_suppression_db": 9.623428344726562,
+      "sisdri": 9.34789403038076,
+      "loc_precision": 0.9375,
+      "loc_recall": 1.0,
+      "loc_f1": 0.967741935483871,
+      "loc_iou": 0.9375,
+      "onset_err_s": 0.10000000000000009,
+      "offset_err_s": 0.09999999999999964,
+      "event_recall": 1.0,
+      "edge_click_db": -8.642304626618275,
+      "intervals": [
+        [
+          2.071125,
+          5.271125
+        ]
+      ]
+    }
+  },
+  "source_files": {
+    "events": [
+      "5-203128-B-0.wav"
+    ],
+    "bed": [
+      "5-217186-C-16.wav",
+      "5-157204-B-16.wav",
+      "5-179496-B-16.wav"
+    ],
+    "speech": [
+      "8842-302196-0000.flac"
+    ]
+  }
+}

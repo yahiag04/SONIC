@@ -1,0 +1,36 @@
+paths:
+  data_root: /content/sonic_data
+  models_dir: /content/sonic_models
+  results_dir: /content/sonic_results
+  cache_dir: /content/sonic_results/cache
+separation:
+  device: auto
+  use_chunk: false
+localization:
+  win_s: 1.0
+  hop_s: 0.25
+  normalization: zscore
+  threshold: 0.5
+  median_kernel_s: 0.25
+  min_event_s: 0.1
+  min_gap_s: 0.25
+  pad_s: 0.1
+  frame_rate: 100
+  background_prompts:
+  - ambient background noise
+  - a quiet room
+  - people talking
+  - rain and wind
+editing:
+  crossfade_s: 0.2
+  mask: hard
+  soft_temperature: 0.5
+dataset:
+  seed: 1234
+  length_s: 10.0
+  n_eval_per_scenario: 20
+  n_dev_per_scenario: 10
+  snr_db_min: -5.0
+  snr_db_max: 5.0
+  speech_to_bed_db_min: 0.0
+  speech_to_bed_db_max: 6.0
