@@ -36,6 +36,39 @@ def test_composite_keeps_unmasked_samples():
     assert np.array_equal(composite(x, gen, None), gen)
 
 
+def test_load_pipeline_uses_lm_head_model(monkeypatch):
+    """Regression: the checkpoint's GPT2Model lacks generation helpers in recent transformers."""
+    torch = pytest.importorskip("torch")
+    diffusers = pytest.importorskip("diffusers")
+    transformers = pytest.importorskip("transformers")
+    from sonic.generative import load_pipeline
+
+    seen = {}
+
+    class FakeLM:
+        def to(self, dtype):
+            seen["lm_dtype"] = dtype
+            return self
+
+    class FakePipe:
+        scheduler = diffusers.DDIMScheduler()
+
+    def fake_lm(model_id, subfolder):
+        seen["subfolder"] = subfolder
+        return FakeLM()
+
+    def fake_pipe(model_id, **kw):
+        seen.update(kw)
+        return FakePipe()
+
+    monkeypatch.setattr(transformers.GPT2LMHeadModel, "from_pretrained", staticmethod(fake_lm))
+    monkeypatch.setattr(diffusers.AudioLDM2Pipeline, "from_pretrained", staticmethod(fake_pipe))
+    pipe = load_pipeline("x", torch.float16)
+    assert seen["subfolder"] == "language_model" and isinstance(seen["language_model"], FakeLM)
+    assert seen["lm_dtype"] == torch.float16 and seen["torch_dtype"] == torch.float16
+    assert isinstance(pipe.scheduler, diffusers.DDIMScheduler)
+
+
 @pytest.fixture(scope="module")
 def tiny_editor():
     torch = pytest.importorskip("torch")

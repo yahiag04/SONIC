@@ -76,6 +76,23 @@ def composite(x: np.ndarray, generated: np.ndarray, mask: np.ndarray | None) -> 
 
 # ------------------------------------------------------------ model wrapper --
 
+def load_pipeline(model_id: str, dtype):
+    """Load AudioLDM2 with a DDIM scheduler.
+
+    The checkpoint declares its language model as ``GPT2Model``; recent
+    transformers no longer give base models the generation helpers the
+    pipeline calls, so it is loaded as ``GPT2LMHeadModel`` (same weights, the
+    LM head is tied and unused: only hidden states are consumed).
+    """
+    from diffusers import AudioLDM2Pipeline, DDIMScheduler
+    from transformers import GPT2LMHeadModel
+
+    lm = GPT2LMHeadModel.from_pretrained(model_id, subfolder="language_model").to(dtype)
+    pipe = AudioLDM2Pipeline.from_pretrained(model_id, language_model=lm, torch_dtype=dtype)
+    pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
+    return pipe
+
+
 class AudioLDM2Editor:
     """Loads AudioLDM2 once; ``edit`` performs (masked) SDEdit removal."""
 
@@ -88,11 +105,8 @@ class AudioLDM2Editor:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         if pipe is None:
-            from diffusers import AudioLDM2Pipeline, DDIMScheduler
-
             dtype = torch.float16 if (params.fp16 and device.startswith("cuda")) else torch.float32
-            pipe = AudioLDM2Pipeline.from_pretrained(params.model_id, torch_dtype=dtype)
-            pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
+            pipe = load_pipeline(params.model_id, dtype)
         self.pipe = pipe.to(device)
         self.pipe.set_progress_bar_config(disable=True)
         self.dtype = next(self.pipe.unet.parameters()).dtype
