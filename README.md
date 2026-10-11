@@ -31,6 +31,20 @@ in instruction-guided audio editing without sacrificing editing quality?
   bottleneck.
 * Cost: 1.21 s vs 0.37 s per 10 s clip; about 2.3 GB peak GPU memory.
 
+### Experiment C: the same masks driving a diffusion editor (AudioLDM2)
+
+| Method (strength 0.6) | Whole-clip SDR | Background LSD outside events ↓ | Background LSD inside events ↓ |
+|---|---|---|---|
+| Global regeneration | −2.5 dB | 12.8 dB | 13.3 dB |
+| **SONIC-masked regeneration** | **3.0** dB | **1.9** dB | 11.8 dB |
+| Oracle-masked regeneration | 3.4 dB | 1.1 dB | 13.2 dB |
+| *Subtractive SONIC (for reference)* | *17.6 dB* | *0.35 dB* | *5.1 dB* |
+
+* Localization helps the generative editor on **60/60 clips** (p = 1.6e-11).
+* Off-the-shelf regeneration (negative prompt = target, masked SDEdit) is much less faithful
+  than masked subtraction: it invents a plausible but different background. No perceptual
+  evaluation was run. Details: `results/generative/eval/summary.md`, research note §6b.
+
 Demo audio and localization plots: `examples/` (three examples, not hand-picked).
 
 [Open the notebook in Colab](https://colab.research.google.com/github/yahiag04/SONIC/blob/main/notebooks/sonic_colab.ipynb)
@@ -43,10 +57,12 @@ Demo audio and localization plots: `examples/` (three examples, not hand-picked)
 |---|---|---|
 | Pretrained (third-party) | **AudioSep** text-queried separation (ResUNet30, `audiosep_base_4M_steps.ckpt`) | Liu et al., 2023, [Audio-AGI/AudioSep](https://github.com/Audio-AGI/AudioSep), MIT |
 | Pretrained (third-party) | **LAION-CLAP** HTSAT-base text/audio encoder (AudioSep's query encoder) | Wu et al., 2023, [LAION-AI/CLAP](https://github.com/LAION-AI/CLAP), CC0-1.0 |
+| Pretrained (third-party) | **AudioLDM2** latent diffusion model, Experiment C only | Liu et al., 2024, `cvssp/audioldm2` via diffusers, CC BY-NC-SA 4.0 |
 | Original engineering | CLAP-window **temporal localization** (contrastive target-vs-background score, per-clip normalization, post-processing) | this repo, `sonic/localization.py` |
 | Original engineering | **Mask-gated removal** with raised-cosine crossfades; samples outside the mask are bit-identical to the input | `sonic/editing.py` |
+| Original engineering | **Masked SDEdit editor**: negative-prompt regeneration restricted to the SONIC mask, bit-identical outside it | `sonic/generative.py` |
 | Original engineering | Controlled **dataset generator**, **evaluation protocol** (regional SDR, suppression, localization, click metric, paired statistics), cached fair comparison | `sonic/dataset*.py`, `sonic/evaluation.py`, `sonic/experiment.py` |
-| Hypothesis (to be tested) | Localized subtraction improves preservation outside target events with no loss of suppression inside them | `reports/research_note.md` |
+| Hypothesis (tested: partially supported) | Localized subtraction improves preservation outside target events with no loss of suppression inside them | `reports/research_note.md` |
 
 No model is trained or fine-tuned.
 
@@ -84,6 +100,7 @@ sonic/                  library (numpy core; torch only inside separation.py)
   experiment.py         stage-1 caching and stage-2 evaluation
   ablation.py           one-factor-at-a-time ablations + dev-based selection
   plotting.py           localization / comparison / ablation figures
+  generative.py         AudioLDM2 masked SDEdit editor (Experiment C); generative_experiment.py runs it
   config.py             YAML config with `section.key=value` CLI overrides
 scripts/                fetch_models, prepare_dataset, run_separation, run_baseline, run_sonic,
                         run_ablations, evaluate, make_examples, build_notebook
@@ -122,6 +139,7 @@ python scripts/run_separation.py --split eval $OV
 python scripts/run_ablations.py $OV                   # dev only → results/ablations/tuned.yaml
 python scripts/evaluate.py --split eval --config results/ablations/tuned.yaml --clap $OV
 python scripts/make_examples.py --config results/ablations/tuned.yaml $OV
+python scripts/run_generative.py --split eval --config results/ablations/tuned.yaml $OV   # Experiment C
 
 # single file, end to end
 python scripts/run_sonic.py --audio clip.wav --instruction "Remove the dog barking" $OV
@@ -191,5 +209,5 @@ bootstrap CI), with paired Wilcoxon tests between methods.
 ## License
 
 Code: MIT (see `LICENSE`). Third-party models and datasets keep their own licenses
-(AudioSep: MIT; LAION-CLAP: CC0-1.0; ESC-50: CC BY-NC 3.0; LibriSpeech: CC BY 4.0).
+(AudioSep: MIT; LAION-CLAP: CC0-1.0; AudioLDM2: CC BY-NC-SA 4.0; ESC-50: CC BY-NC 3.0; LibriSpeech: CC BY 4.0).
 Audio generated from ESC-50 is for non-commercial research use.

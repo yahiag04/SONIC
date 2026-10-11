@@ -1,8 +1,8 @@
 # SONIC: Temporal Localization for Instruction-Guided Sound Removal
 
 *Research note. All numbers come from the Colab run whose outputs are committed in
-`results/main/eval/` (held-out eval split, 60 clips) and `results/ablations/` (dev split,
-30 clips). Values are means with 95% bootstrap confidence intervals; tests are paired
+`results/main/eval/` (held-out eval split, 60 clips), `results/ablations/` (dev split,
+30 clips) and `results/generative/eval/` (Experiment C, same 60 eval clips). Values are means with 95% bootstrap confidence intervals; tests are paired
 Wilcoxon signed-rank tests over clips.*
 
 ## 1. Abstract
@@ -22,6 +22,11 @@ quality" is therefore only **partially supported**: it holds for single short ev
 measurable suppression loss) but not for intermittent events, where SONIC is worse than the
 baseline overall. The oracle mask improves preservation without any suppression loss
 (+5.4 dB whole-clip SDR), which identifies localization recall as the bottleneck.
+A second experiment plugs the same masks into a pretrained diffusion model (AudioLDM2) that
+removes the target by regeneration. Localization helps the generative editor on every one of
+the 60 clips (background log-spectral distance outside events 12.8 → 1.9 dB), but
+off-the-shelf regeneration remains far less faithful than masked subtraction on all
+reference-based metrics.
 
 ## 2. Problem formulation
 
@@ -44,7 +49,10 @@ target is silent and `m = 0`, the error is exactly zero. Localization therefore 
   as its query encoder. SONIC reuses this encoder for window-level localization.
 * **Instruction-following generative editing:** AUDIT (Wang et al., 2023) regenerates audio
   with a latent diffusion model. SONIC instead edits by masked subtraction, so samples outside
-  the mask stay bit-identical.
+  the mask stay bit-identical. Experiment C tests the generative route directly with
+  AudioLDM2 (Liu et al., 2024), using SDEdit-style partial noising (Meng et al., 2022) and
+  known-region latent replacement as in blended diffusion / RePaint (Avrahami et al., 2022;
+  Lugmayr et al., 2022).
 
 ## 4. Methodology
 
@@ -89,9 +97,9 @@ The final configuration was selected on the dev split only: W = 1 s, hop 0.25 s,
 
   Inside events, `sdr_bg_in` and suppression share the same residual, so their differences
   between methods are identical. CLAP similarity is reported only as an auxiliary signal.
-* **Hardware.** Google Colab GPU runtime. Peak allocated GPU memory was about 2.3 GB, well
-  within a T4's 16 GB. The GPU model was not recorded in this run's outputs; `evaluate.py`
-  now writes `environment.json` for future runs.
+* **Hardware.** Google Colab, NVIDIA Tesla T4 (recorded in `environment.json` of a re-run
+  that reproduced every subtractive number exactly). Peak allocated GPU memory for the
+  subtractive pipeline was about 2.3 GB.
 
 ## 6. Quantitative results (eval split, n = 60)
 
@@ -148,6 +156,74 @@ was run.
 baseline and 0.17 for SONIC. This is consistent with SONIC's lower suppression and is not
 used as evidence of fidelity.
 
+## 6b. Experiment C: generative removal with the same masks (eval split, n = 60)
+
+**Question.** Does temporal localization also matter when the edit is done by a generative
+model instead of subtraction, and how does regeneration compare with subtraction?
+
+**Pretrained component (not a contribution):** AudioLDM2 (`cvssp/audioldm2`, CC BY-NC-SA
+4.0) through `diffusers`, unchanged: VAE, UNet, text encoders and HiFi-GAN vocoder (16 kHz).
+
+**Editor (original engineering, `sonic/generative.py`).** The clip is resampled to 16 kHz,
+converted to AudioLDM's log-mel representation and VAE-encoded. The latent is noised to a
+fraction `s` of a 100-step DDIM schedule and denoised with classifier-free guidance 3.5,
+with the positive prompt "natural background ambience, high quality" and the **target as
+the negative prompt**. With a mask, latent frames outside it are replaced at every step by
+the correspondingly noised original latent, and the decoded audio is composited into the
+original waveform with the same crossfaded mask, so unmasked samples stay bit-identical.
+Conditions: `gen_global` (no mask), `gen_sonic` (SONIC's mask), `gen_oracle` (ground-truth
+mask), each at `s = 0.6` and `s = 1.0`, with the same per-clip noise seed across conditions.
+
+**Front-end check.** Vocoding the log-mel of real clips gives LSD 7.06 dB to the input,
+7.11 dB through VAE + vocoder. Plausible mel mistakes (log10, unnormalised or HTK filters)
+give 9–33 dB, so the representation matches the model, and **≈ 7 dB is the reconstruction
+floor** of any region AudioLDM2 regenerates.
+
+**Metric.** Waveform SDR punishes regeneration (new phase, new texture) regardless of
+quality, so a phase-insensitive **log-spectral distance** (LSD, dB, lower is better) to the
+reference background is added, plus the CLAP drop to the target text inside true events.
+
+**Table 3.** Mean [95% CI]; strength `s = 0.6` unless noted. Subtractive rows repeated for
+reference.
+
+| Method | sdr_bg | sdr_bg_out | lsd_out | lsd_in | CLAP drop in events | s / clip |
+|---|---|---|---|---|---|---|
+| Subtractive baseline | 15.48 | 20.78 | 2.58 [2.10, 3.04] | 5.02 [4.50, 5.60] | 0.26 | 0.37 |
+| Subtractive SONIC | 17.59 | 36.74 | 0.35 [0.27, 0.43] | 5.07 [4.51, 5.65] | 0.21 | 1.21 |
+| gen_global | −2.49 [−2.77, −2.22] | −2.33 | 12.82 [11.68, 14.02] | 13.26 [12.25, 14.30] | 0.28 | 6.5 |
+| **gen_sonic** | 2.97 [2.36, 3.66] | 7.80 | **1.88** [1.60, 2.20] | 11.77 [10.72, 12.85] | 0.23 | 6.4 (+0.8 for CLAP localization) |
+| gen_oracle | 3.44 [2.59, 4.33] | 10.36 | 1.07 [0.86, 1.29] | 13.17 [12.13, 14.22] | 0.27 | 6.4 |
+| gen_global, s = 1 | −7.96 | −7.92 | 16.24 | 15.64 | 0.32 | 10.5 |
+| gen_sonic, s = 1 | −1.76 | 2.39 | 2.28 | 12.99 | 0.27 | 10.5 |
+
+**Findings.**
+* **Localization transfers to generative editing.** `gen_sonic` beats `gen_global` on
+  `sdr_bg` and `lsd_out` on **60 of 60 clips** at both strengths (+5.5 dB `sdr_bg`,
+  −10.9 dB `lsd_out` at `s = 0.6`, p = 1.6e-11). Global regeneration rewrites the whole
+  clip (`lsd_out` 12.8 dB, above the 7 dB vocoder floor, so the content itself changes);
+  the mask confines that damage to about a third of the clip.
+* **Regeneration is not competitive with subtraction here.** Every subtractive condition
+  beats every generative one on SDR and LSD, inside and outside events (e.g. SONIC vs
+  `gen_sonic`: `lsd_in` 5.1 vs 11.8 dB, p < 1e-10). The in-event CLAP drop is similar
+  (0.21 vs 0.23, n.s.); only with full regeneration and the oracle mask is it slightly higher
+  than subtraction (0.31 vs 0.26, p = 0.006), at a large fidelity cost.
+* **The same recall trade-off appears.** `gen_sonic` removes less of the target than
+  `gen_global` (CLAP drop −0.054, p = 2e-4) because missed segments are left untouched;
+  its slightly *lower* `lsd_in` than the oracle (11.8 vs 13.2 dB) reflects these unedited
+  segments, not better generation.
+* **Partial noising is better than full regeneration** on every fidelity metric
+  (`s = 0.6` vs `s = 1`), at a small cost in CLAP drop.
+* **Cost.** 6.4 s (`s = 0.6`) and 10.5 s (`s = 1`) per clip on a T4, 5–9× the subtractive
+  SONIC pipeline.
+
+**Interpretation.** A text-conditioned diffusion model that was never trained for
+inpainting, conditioned only through a negative prompt, does not know what the background
+behind the target sounded like; it invents a plausible texture with its own spectrum and
+level. Reference-based metrics count that invention as error, so these numbers bound
+*faithful* removal, not perceptual plausibility, which was not measured (no listening test,
+no FAD). The robust conclusion is the relative one: whatever the editor, editing only where
+the target is detected preserves the rest of the clip far better.
+
 ## 7. Ablation study (dev split, n = 30, one factor at a time)
 
 | Factor | Values → `sdr_bg` (dB) | Observation |
@@ -173,6 +249,10 @@ and the differences between neighbouring values are mostly within the confidence
 * **One run, one separator, one seed.** Results depend on how much AudioSep leaks.
 * **Crossfade evidence is weak.** The click metric could not distinguish crossfade lengths,
   and no perceptual evaluation was done.
+* **Experiment C uses one generative model and one prompt setup,** without tuning of prompt,
+  guidance or schedule, at 16 kHz with a 7 dB vocoder floor. It shows how an off-the-shelf
+  editor behaves, not the best achievable generative removal; inpainting-trained models
+  (e.g. AUDIT-style) might close part of the gap.
 
 ## 9. Future work
 
@@ -185,17 +265,22 @@ and the differences between neighbouring values are mostly within the confidence
   motivated by the intermittent scenario.
 * **Real recordings, target-absent clips, listening tests;** amplification and replacement
   edits.
+* **Hybrid editing:** subtract with AudioSep, then regenerate only the short in-event
+  residual with a diffusion model, scored with a perceptual metric (FAD, listening test).
 
 ## Summary of claims
 
 | Type | Statement | Evidence |
 |---|---|---|
 | Pretrained | AudioSep separator; LAION-CLAP encoder | third-party, used unchanged |
-| Engineering | contrastive CLAP window scoring, interval post-processing, gated crossfaded subtraction, evaluation protocol, dataset generator | implemented; 88 unit tests |
+| Pretrained | AudioLDM2 latent diffusion model (Experiment C) | third-party, used unchanged |
+| Engineering | contrastive CLAP window scoring, interval post-processing, gated crossfaded subtraction, masked SDEdit editor, evaluation protocol, dataset generator | implemented; 97 unit tests |
 | Validated | gating the same AudioSep estimate with CLAP intervals improves out-of-event preservation (+16.0 dB) and whole-clip SDR (+2.1 dB) | Table 1, p ≤ 0.007 |
 | Validated | with ground-truth intervals, gating improves whole-clip SDR by 5.4 dB with no suppression loss | Table 1 |
 | Not supported in general | "no loss of editing quality": suppression drops 2.6 dB on average, and SONIC is worse overall on intermittent events | Tables 1–2 |
 | Supported for one scenario | no significant suppression loss for single short events | Table 2 |
+| Validated | SONIC masks also improve a generative (diffusion) editor: better preservation on 60/60 clips | Table 3 |
+| Negative result | off-the-shelf AudioLDM2 regeneration is less faithful than masked subtraction on every reference-based metric | Table 3 |
 
 ## References
 
@@ -207,6 +292,14 @@ and the differences between neighbouring values are mostly within the confidence
   Augmentation," ICASSP 2023.
 * Y. Wang et al., "AUDIT: Audio Editing by Following Instructions with Latent Diffusion
   Models," NeurIPS 2023.
+* H. Liu et al., "AudioLDM 2: Learning Holistic Audio Generation with Self-Supervised
+  Pretraining," IEEE/ACM TASLP, 2024.
+* C. Meng et al., "SDEdit: Guided Image Synthesis and Editing with Stochastic Differential
+  Equations," ICLR 2022.
+* O. Avrahami, D. Lischinski, O. Fried, "Blended Diffusion for Text-driven Editing of Natural
+  Images," CVPR 2022.
+* A. Lugmayr et al., "RePaint: Inpainting using Denoising Diffusion Probabilistic Models,"
+  CVPR 2022.
 * K. J. Piczak, "ESC: Dataset for Environmental Sound Classification," ACM Multimedia 2015.
 * V. Panayotov, G. Chen, D. Povey, S. Khudanpur, "LibriSpeech: an ASR corpus based on
   public domain audio books," ICASSP 2015.

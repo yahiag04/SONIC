@@ -7,7 +7,7 @@
 * { box-sizing:border-box; }
 body { margin:0; font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--fg); background:var(--bg); }
 main { max-width:980px; margin:0 auto; padding:40px 18px 80px; }
-h1 { font-size:2rem; margin:0 0 .2em; } h2 { font-size:1.25rem; margin:0 0 .4em; }
+h1 { font-size:2rem; margin:0 0 .2em; } h2 { font-size:1.25rem; margin:0 0 .4em; } h3 { font-size:1.02rem; margin:1.2em 0 .5em; }
 .sub { color:var(--muted); margin:0 0 1.2em; font-size:1.05rem; }
 a { color:var(--accent); }
 .links a { margin-right:1.2em; font-weight:600; }
@@ -72,5 +72,19 @@ ul { padding-left:1.2em; }
     <tr><th>Method</th><th>SDR (dB)</th><th>Background SDR outside events (dB)</th><th>Target suppression (dB)</th><th>Localization IoU</th></tr>
     <tr><td>Baseline</td><td>18.1</td><td>44.8</td><td>12.9</td><td>–</td></tr><tr><td>SONIC</td><td>11.4</td><td>52.4</td><td>6.2</td><td>0.61</td></tr><tr><td>Oracle</td><td>18.1</td><td>46.6</td><td>12.9</td><td>0.88</td></tr>
   </table></div>
+</section>
+
+<section class="card">
+  <h2>Experiment C: the same masks driving a diffusion model</h2>
+  <p>A pretrained text-to-audio diffusion model (AudioLDM2) removes the target by <i>regenerating</i> audio, with the target as negative prompt (masked SDEdit, strength 0.6). Without a mask it rewrites the whole clip; with SONIC's mask only the detected regions change and the rest stays bit-identical.</p>
+  <div class="scroll"><table>
+  <tr><th>Method</th><th>Whole-clip SDR (dB)</th><th>Background LSD outside events (dB, lower is better)</th><th>Background LSD inside events (dB)</th></tr>
+  <tr><td>Global regeneration</td><td>-2.5 <small>[-2.8, -2.2]</small></td><td>12.8 <small>[11.7, 14.0]</small></td><td>13.3 <small>[12.2, 14.3]</small></td></tr><tr><td><b>SONIC-masked regeneration</b></td><td>3.0 <small>[2.4, 3.7]</small></td><td>1.9 <small>[1.6, 2.2]</small></td><td>11.8 <small>[10.7, 12.9]</small></td></tr><tr><td>Oracle-masked regeneration</td><td>3.4 <small>[2.6, 4.3]</small></td><td>1.1 <small>[0.9, 1.3]</small></td><td>13.2 <small>[12.1, 14.2]</small></td></tr><tr><td><i>Subtractive SONIC</i></td><td>17.6 <small>[15.6, 19.7]</small></td><td>0.3 <small>[0.3, 0.4]</small></td><td>5.1 <small>[4.5, 5.6]</small></td></tr></table></div>
+  <ul>
+  <li>Localization improves the generative editor on <b>60/60 clips</b> (p&nbsp;=&nbsp;1.6e-11).</li>
+  <li>Off-the-shelf regeneration is far less faithful than subtraction: it invents a plausible but different background (vocoder floor alone is about 7&nbsp;dB LSD). No listening test was run.</li>
+  </ul>
+  <h3>Dog barking over an environmental background with speech</h3><div class="players"><div class="track"><span>Original</span><audio controls preload="none" src="demo/generative/dog_env_000/mixture.wav"></audio></div><div class="track"><span>Diffusion: global regeneration</span><audio controls preload="none" src="demo/generative/dog_env_000/gen_global.wav"></audio></div><div class="track"><span>Diffusion: SONIC-masked regeneration</span><audio controls preload="none" src="demo/generative/dog_env_000/gen_sonic.wav"></audio></div><div class="track"><span>Diffusion: oracle-masked</span><audio controls preload="none" src="demo/generative/dog_env_000/gen_oracle.wav"></audio></div><div class="track"><span>Subtractive SONIC (reference)</span><audio controls preload="none" src="demo/generative/dog_env_000/sonic.wav"></audio></div></div><h3>A sound occurring at multiple timestamps</h3><div class="players"><div class="track"><span>Original</span><audio controls preload="none" src="demo/generative/intermittent_000/mixture.wav"></audio></div><div class="track"><span>Diffusion: global regeneration</span><audio controls preload="none" src="demo/generative/intermittent_000/gen_global.wav"></audio></div><div class="track"><span>Diffusion: SONIC-masked regeneration</span><audio controls preload="none" src="demo/generative/intermittent_000/gen_sonic.wav"></audio></div><div class="track"><span>Diffusion: oracle-masked</span><audio controls preload="none" src="demo/generative/intermittent_000/gen_oracle.wav"></audio></div><div class="track"><span>Subtractive SONIC (reference)</span><audio controls preload="none" src="demo/generative/intermittent_000/sonic.wav"></audio></div></div><h3>A single short event over a continuous background</h3><div class="players"><div class="track"><span>Original</span><audio controls preload="none" src="demo/generative/short_event_000/mixture.wav"></audio></div><div class="track"><span>Diffusion: global regeneration</span><audio controls preload="none" src="demo/generative/short_event_000/gen_global.wav"></audio></div><div class="track"><span>Diffusion: SONIC-masked regeneration</span><audio controls preload="none" src="demo/generative/short_event_000/gen_sonic.wav"></audio></div><div class="track"><span>Diffusion: oracle-masked</span><audio controls preload="none" src="demo/generative/short_event_000/gen_oracle.wav"></audio></div><div class="track"><span>Subtractive SONIC (reference)</span><audio controls preload="none" src="demo/generative/short_event_000/sonic.wav"></audio></div></div>
+  <p><small>AudioLDM2: CC BY-NC-SA 4.0. First eval clip of each scenario, not hand-picked.</small></p>
 </section>
 </main></body></html>
