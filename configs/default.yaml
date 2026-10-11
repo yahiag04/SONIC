@@ -1,0 +1,43 @@
+# SONIC default configuration. Paths are relative to the working directory
+# unless absolute; override any key from the CLI, e.g.
+#   python scripts/run_sonic.py localization.threshold=0.3
+paths:
+  data_root: data          # generated dataset (data/<split>/<sample_id>/)
+  models_dir: models       # AudioSep repo clone + checkpoints
+  results_dir: results
+  cache_dir: results/cache # cached AudioSep estimates and CLAP window scores
+
+separation:
+  device: auto             # auto | cuda | cpu
+  use_chunk: false         # AudioSep chunked inference (for clips much longer than 10 s)
+
+localization:
+  win_s: 1.0
+  hop_s: 0.25
+  normalization: zscore    # zscore | minmax | none
+  threshold: 0.5
+  median_kernel_s: 0.25
+  min_event_s: 0.1
+  min_gap_s: 0.25
+  pad_s: 0.1
+  frame_rate: 100
+  background_prompts:
+    - ambient background noise
+    - a quiet room
+    - people talking
+    - rain and wind
+
+editing:
+  crossfade_s: 0.05
+  mask: hard               # hard | soft (soft = sigmoid of the score curve)
+  soft_temperature: 0.5
+
+dataset:
+  seed: 1234
+  length_s: 10.0
+  n_eval_per_scenario: 20
+  n_dev_per_scenario: 10
+  snr_db_min: -5.0
+  snr_db_max: 5.0
+  speech_to_bed_db_min: 0.0
+  speech_to_bed_db_max: 6.0
