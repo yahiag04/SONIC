@@ -30,9 +30,14 @@ def main():
     from huggingface_hub import hf_hub_download
 
     ckpt_dir = models / "checkpoints"
+    link_dir = repo / "checkpoint"  # AudioSep builds a default CLAP_Encoder at import time from here
+    link_dir.mkdir(exist_ok=True)
     for name in (SEP_CKPT, CLAP_CKPT):
-        path = hf_hub_download(HF_REPO, name, local_dir=str(ckpt_dir))
-        print(f"checkpoint: {path}")
+        path = Path(hf_hub_download(HF_REPO, name, local_dir=str(ckpt_dir))).resolve()
+        link = link_dir / name
+        if not link.exists():
+            link.symlink_to(path)
+        print(f"checkpoint: {path} ({path.stat().st_size / 2**20:.0f} MB)")
 
 
 if __name__ == "__main__":

@@ -10,4 +10,5 @@ ftfy
 braceexpand
 webdataset
 h5py
+wget
 nbformat

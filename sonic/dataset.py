@@ -28,7 +28,7 @@ TARGET_PROMPTS = {
 }
 
 # Continuous ESC-50 categories used as background beds.
-BED_CLASSES = ("rain", "wind", "sea_waves", "crackling_fire", "crickets", "engine", "water_drops", "chirping_birds")
+BED_CLASSES = ("rain", "wind", "sea_waves", "crackling_fire", "crickets", "engine", "vacuum_cleaner", "washing_machine")
 
 INSTRUCTION_TEMPLATES = (
     "Remove the {p} while preserving everything else.",
