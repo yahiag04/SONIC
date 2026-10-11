@@ -124,8 +124,8 @@ re-use them.
   disjointly the same way.
 - Each sample is 10 s at 32 kHz:
   - Background bed: a continuous class (rain, wind, crackling fire, sea
-    waves, crickets, engine), with two 5 s clips concatenated with a 50 ms
-    crossfade.
+    waves, crickets, engine, vacuum cleaner, washing machine), with up to three
+    5 s clips concatenated with 50 ms crossfades.
   - Optional speech (scenario-dependent), RMS-scaled.
   - Target event(s): the event clip is trimmed to its active region
     (energy-based, top-dB trim) and placed at random non-overlapping onsets;
