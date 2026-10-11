@@ -63,7 +63,7 @@ def main():
     if not libri_root.exists():
         t = download(LIBRI_URLS, raw / "dev-clean.tar.gz")
         with tarfile.open(t) as fh:
-            fh.extractall(raw)
+            fh.extractall(raw, filter="data")
 
     pools = split_pools(load_esc50(esc_root), list_librispeech(libri_root))
     sizes = {"dev": cfg.dataset.n_dev_per_scenario, "eval": cfg.dataset.n_eval_per_scenario}

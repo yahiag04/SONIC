@@ -84,3 +84,17 @@ def test_every_template_parses_back_to_prompt(cls):
 def test_scenarios_use_known_targets():
     for sc in ds.SCENARIOS.values():
         assert set(sc.targets) <= set(ds.TARGET_PROMPTS)
+
+
+def test_events_of_different_lengths_fit_and_match_intervals():
+    """Regression: sorted onsets were paired with unsorted events of different lengths."""
+    for seed in range(200):
+        rng = np.random.default_rng(seed)
+        bed = 0.1 * rng.standard_normal(SR * 10)
+        lengths = [0.3, 1.5, 0.8]
+        events = [tone(500 + 100 * i, L, amp=1.0) for i, L in enumerate(lengths)]
+        out = ds.synthesize_sample(bed, events, snr_db=0.0, rng=rng, sr=SR)
+        ints = out["intervals"]
+        assert all(t1 <= 10.0 for _, t1 in ints)
+        assert sorted(round(t1 - t0, 3) for t0, t1 in ints) == sorted(lengths)
+        assert ints == sorted(ints)

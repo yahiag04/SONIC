@@ -100,7 +100,8 @@ def concat_crossfade(clips: list[np.ndarray], length: int, sr: int, fade_s: floa
 
 def place_events(event_lengths: list[int], length: int, rng: np.random.Generator,
                  min_gap: int, margin: int, max_tries: int = 1000) -> list[int]:
-    """Random non-overlapping onsets (sorted) with at least ``min_gap`` samples between events."""
+    """Random non-overlapping onsets, one per event and in the same order as ``event_lengths``,
+    with at least ``min_gap`` samples between consecutive events."""
     for _ in range(max_tries):
         onsets = []
         ok = True
@@ -114,7 +115,7 @@ def place_events(event_lengths: list[int], length: int, rng: np.random.Generator
             break
         spans = sorted(zip(onsets, event_lengths))
         if all(spans[j + 1][0] - (spans[j][0] + spans[j][1]) >= min_gap for j in range(len(spans) - 1)):
-            return [o for o, _ in spans]
+            return onsets
     raise ValueError("could not place events without overlap; shorten events or reduce their number")
 
 
@@ -159,6 +160,7 @@ def synthesize_sample(
     for o, e in zip(onsets, events):
         target[o:o + len(e)] += e
         intervals.append((o / sr, (o + len(e)) / sr))
+    intervals.sort()
     stems["target"] = target
 
     stems, gain = fit_peak(stems, peak)
