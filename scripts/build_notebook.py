@@ -82,7 +82,8 @@ else:
     code("!python scripts/fetch_models.py {OVS}"),
     md("### Model sanity check\nLoads AudioSep once and separates an example file from the official AudioSep demo Space. If this cell fails, nothing downstream is valid, and there is no silent fallback."),
     code("""import sys, numpy as np
-sys.path.insert(0, "scripts")
+# `pip install -e .` is not visible to the already-running kernel, so import from the checkout.
+sys.path.insert(0, WORK_DIR)
 from sonic.config import load_config
 from sonic.audio import load_audio
 from sonic.separation import AudioSepModel
