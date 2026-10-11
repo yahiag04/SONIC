@@ -8,6 +8,7 @@ from typing import Sequence
 
 import yaml
 
+from sonic.generative import GenerativeParams
 from sonic.localization import LocalizationParams
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "configs" / "default.yaml"
@@ -53,10 +54,12 @@ class SonicConfig:
     localization: LocalizationParams = field(default_factory=LocalizationParams)
     editing: EditingConfig = field(default_factory=EditingConfig)
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    generative: GenerativeParams = field(default_factory=GenerativeParams)
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d["localization"]["background_prompts"] = list(d["localization"]["background_prompts"])
+        d["generative"]["strengths"] = list(d["generative"]["strengths"])
         return d
 
     def with_overrides(self, overrides: Sequence[str]) -> "SonicConfig":
@@ -71,6 +74,7 @@ _SECTION_CLASSES = {
     "localization": LocalizationParams,
     "editing": EditingConfig,
     "dataset": DatasetConfig,
+    "generative": GenerativeParams,
 }
 
 
@@ -87,6 +91,8 @@ def _from_dict(data: dict) -> SonicConfig:
             raise KeyError(f"unknown keys in [{name}]: {sorted(bad)}")
         if name == "localization" and "background_prompts" in section:
             section["background_prompts"] = tuple(section["background_prompts"])
+        if name == "generative" and "strengths" in section:
+            section["strengths"] = tuple(float(v) for v in section["strengths"])
         kwargs[name] = cls(**section)
     return SonicConfig(**kwargs)
 

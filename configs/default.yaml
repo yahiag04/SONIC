@@ -41,3 +41,12 @@ dataset:
   snr_db_max: 5.0
   speech_to_bed_db_min: 0.0
   speech_to_bed_db_max: 6.0
+
+generative:                # diffusion-based removal (AudioLDM2), Experiment C
+  model_id: cvssp/audioldm2
+  prompt: natural background ambience, high quality
+  steps: 100               # DDIM steps for the full schedule
+  guidance_scale: 3.5
+  strengths: [0.6, 1.0]    # fraction of the schedule re-run (1.0 = regenerate from noise)
+  seed: 0
+  fp16: true

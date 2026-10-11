@@ -123,3 +123,16 @@ def test_aggregate_and_paired_test():
     assert row.m_ci_low <= row.m_mean <= row.m_ci_high
     t = ev.paired_test(df, "m", "baseline", "sonic")
     assert t["n"] == 30 and t["median_diff"] > 0.8 and t["p_value"] < 1e-4
+
+
+def test_log_spectral_distance_properties():
+    rng = np.random.default_rng(7)
+    ref = rng.standard_normal(SR)
+    assert ev.log_spectral_distance(ref, ref, SR) == pytest.approx(0.0, abs=1e-6)
+    # phase-insensitive: a sign flip leaves the spectrum unchanged
+    assert ev.log_spectral_distance(-ref, ref, SR) == pytest.approx(0.0, abs=1e-6)
+    # a 2x gain is a constant 6.02 dB offset in every bin
+    assert ev.log_spectral_distance(2 * ref, ref, SR) == pytest.approx(20 * np.log10(2), abs=1e-3)
+    region = np.zeros(SR, dtype=bool)
+    region[:100] = True
+    assert np.isnan(ev.log_spectral_distance(ref, ref, SR, region))

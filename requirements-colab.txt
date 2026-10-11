@@ -12,3 +12,7 @@ webdataset
 h5py
 wget
 nbformat
+# Experiment C (generative removal with AudioLDM2)
+diffusers>=0.30
+accelerate
+sentencepiece

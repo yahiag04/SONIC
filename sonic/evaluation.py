@@ -131,6 +131,29 @@ def edge_click_db(error: np.ndarray, mask: np.ndarray, sr: int, near_s: float = 
     return float(10 * np.log10((hp[near].mean() + EPS) / (hp[ring].mean() + EPS)))
 
 
+def log_spectral_distance(y: np.ndarray, ref: np.ndarray, sr: int, region: np.ndarray | None = None,
+                          n_fft: int = 1024, hop: int = 256) -> float:
+    """Mean per-frame log-spectral distance in dB (phase-insensitive).
+
+    Suited to generated audio, where waveform metrics punish phase differences
+    even when the spectrum is right. Frames are kept if their centre lies in
+    ``region`` (a boolean sample mask); NaN if fewer than ~0.25 s of frames remain.
+    """
+    from scipy.signal import stft
+
+    _, _, Y = stft(y, fs=sr, nperseg=n_fft, noverlap=n_fft - hop, boundary=None, padded=False)
+    _, _, R = stft(ref, fs=sr, nperseg=n_fft, noverlap=n_fft - hop, boundary=None, padded=False)
+    d = 10 * np.log10(np.abs(Y) ** 2 + 1e-10) - 10 * np.log10(np.abs(R) ** 2 + 1e-10)
+    per_frame = np.sqrt(np.mean(d ** 2, axis=0))
+    if region is not None:
+        centres = np.arange(per_frame.shape[0]) * hop + n_fft // 2
+        keep = region[np.clip(centres, 0, len(region) - 1)]
+        if keep.sum() * hop < MIN_REGION_S * sr:
+            return float("nan")
+        per_frame = per_frame[keep]
+    return float(per_frame.mean())
+
+
 def evaluate_sample(
     x: np.ndarray,
     y: np.ndarray,
@@ -156,6 +179,8 @@ def evaluate_sample(
         "target_suppression_db": target_suppression_db(y, s, b, E),
     }
     r["sisdri"] = r["sisdr_bg"] - r["sisdr_mix"]
+    r["lsd_in"] = log_spectral_distance(y, b, sr, E)
+    r["lsd_out"] = log_spectral_distance(y, b, sr, out_reg)
     if pred_intervals is not None:
         r.update(frame_metrics(pred_intervals, gt_intervals, n / sr, frame_rate))
         r.update(boundary_errors(pred_intervals, gt_intervals))

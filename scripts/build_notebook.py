@@ -141,6 +141,20 @@ for d in sorted(glob.glob(f"{EX}/example*")):
     rows = {m: {k: round(v, 2) for k, v in meta["metrics"][m].items() if k in
                 ("sdr_bg", "sdr_bg_out", "sdr_bg_in", "target_suppression_db", "loc_iou")} for m in meta["metrics"]}
     display(Markdown("```\\n" + json.dumps(rows, indent=1) + "\\n```"))"""),
+    md("""## 8b. Experiment C: generative removal with diffusion (AudioLDM2)
+The same localization masks are used to drive a pretrained diffusion model (AudioLDM2, `cvssp/audioldm2`,
+CC BY-NC-SA 4.0) that removes the target by **regeneration** (negative prompt = target). Conditions:
+whole-clip regeneration vs. SONIC-localized vs. oracle-localized inpainting, at two strengths.
+The first cell is a sanity check of the mel front end (vocoder / VAE round-trip error); send its output if it looks off."""),
+    code('sh(f"python scripts/run_generative.py --split eval --check --config {TUNED} {OVS}")'),
+    code("""LIMIT = "--limit 3" if QUICK else ""
+sh(f"python scripts/run_generative.py --split eval {LIMIT} --config {TUNED} {OVS}")
+display(Markdown(open(f"{RESULTS_DIR}/generative/eval/summary.md").read()))
+G = f"{RESULTS_DIR}/generative/eval/examples"
+for sid in sorted(os.listdir(G)):
+    display(Markdown(f"#### {sid}"))
+    for f in sorted(os.listdir(f"{G}/{sid}")):
+        print(f); display(Audio(f"{G}/{sid}/{f}"))"""),
     md("### Try your own recording (optional)\nUpload a file and write an instruction such as *Remove the dog barking*. Clips around 10 s work best (AudioSep/CLAP were trained on 10 s segments)."),
     code("""MY_AUDIO = ""   # e.g. "/content/my_clip.wav" (upload via the Files pane)
 MY_INSTRUCTION = "Remove the dog barking while preserving everything else."
