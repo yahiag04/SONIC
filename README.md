@@ -2,6 +2,8 @@
 
 Instruction-guided **selective sound removal** with explicit **temporal localization**.
 
+**🔊 [Listen to the demo](https://yahiag04.github.io/SONIC/)** · [Research note](reports/research_note.md) · [Colab](https://colab.research.google.com/github/yahiag04/SONIC/blob/main/notebooks/sonic_colab.ipynb)
+
 > *"Remove the dog barking while preserving everything else."*
 > → the dog is removed only where it barks; every other sample is left untouched.
 
