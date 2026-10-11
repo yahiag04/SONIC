@@ -40,7 +40,7 @@ BRANCH = "main"
 WORK_DIR = "/content/SONIC"          # repository checkout
 DATA_DIR = "/content/sonic_data"     # raw corpora + generated mixtures
 MODELS_DIR = "/content/sonic_models" # AudioSep code + checkpoints (never committed)
-RESULTS_DIR = "/content/SONIC/results"
+RESULTS_DIR = "/content/sonic_results" # kept outside the checkout
 USE_DRIVE = False                    # True: keep data/models/results on Google Drive
 DRIVE_DIR = "/content/drive/MyDrive/sonic"
 QUICK = False                        # True: tiny dataset for a smoke test only"""),
@@ -60,14 +60,18 @@ OVS = " ".join(OV)
 print(OVS)"""),
     md("## 1. Clone and install"),
     code("""%cd /content
-if not os.path.exists(WORK_DIR):
-    !git clone -b {BRANCH} {REPO_URL} {WORK_DIR}
-else:
+if os.path.isdir(f"{WORK_DIR}/.git"):
     !git -C {WORK_DIR} pull --ff-only
+else:
+    !rm -rf {WORK_DIR}
+    !git clone -b {BRANCH} {REPO_URL} {WORK_DIR}
+assert os.path.isfile(f"{WORK_DIR}/sonic/__init__.py"), "clone failed: see the git output above"
 %cd {WORK_DIR}
 !git log -1 --oneline"""),
     code("""!pip install -q -r requirements-colab.txt
 !pip install -q -e .
+import sys
+sys.path.insert(0, WORK_DIR)  # make `sonic` importable in this kernel without a restart
 !python -m pytest -q tests  # unit tests (test doubles only, no model)"""),
     md("## 2. GPU check"),
     code("""import torch, subprocess
@@ -81,9 +85,7 @@ else:
     md("## 3. Download pretrained models\nAudioSep (Liu et al., 2023) is cloned at a pinned commit; checkpoints come from the official HF repo `audo/AudioSep`."),
     code("!python scripts/fetch_models.py {OVS}"),
     md("### Model sanity check\nLoads AudioSep once and separates an example file from the official AudioSep demo Space. If this cell fails, nothing downstream is valid, and there is no silent fallback."),
-    code("""import sys, numpy as np
-# `pip install -e .` is not visible to the already-running kernel, so import from the checkout.
-sys.path.insert(0, WORK_DIR)
+    code("""import numpy as np
 from sonic.config import load_config
 from sonic.audio import load_audio
 from sonic.separation import AudioSepModel
